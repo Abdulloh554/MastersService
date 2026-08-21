@@ -1,0 +1,81 @@
+import mongoose, { Schema, Document } from "mongoose";
+
+export interface IAd extends Document {
+  clientId: mongoose.Types.ObjectId;
+  title: string;
+  description: string;
+  category: mongoose.Types.ObjectId;
+  images: string[];
+  budget: number;
+  status: "pending" | "active" | "accepted" | "completed" | "cancelled";
+  acceptedBy?: mongoose.Types.ObjectId;
+  location: {
+    address: string;
+    lat: number;
+    lng: number;
+  };
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+const adSchema = new Schema<IAd>(
+  {
+    clientId: {
+      type: Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+    },
+    title: {
+      type: String,
+      required: true,
+      trim: true,
+      maxlength: 200,
+    },
+    description: {
+      type: String,
+      required: true,
+      trim: true,
+      maxlength: 2000,
+    },
+    category: {
+      type: Schema.Types.ObjectId,
+      ref: "Category",
+      required: true,
+    },
+    images: [
+      {
+        type: String,
+      },
+    ],
+    budget: {
+      type: Number,
+      required: true,
+      min: 0,
+    },
+    status: {
+      type: String,
+      enum: ["pending", "active", "accepted", "completed", "cancelled"],
+      default: "pending",
+    },
+    acceptedBy: {
+      type: Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+    },
+    location: {
+      address: { type: String, required: true },
+      lat: { type: Number, required: true },
+      lng: { type: Number, required: true },
+    },
+  },
+  {
+    timestamps: true,
+  }
+);
+
+adSchema.index({ status: 1 });
+adSchema.index({ clientId: 1 });
+
+const Ad = mongoose.model<IAd>("Ad", adSchema);
+
+export default Ad;
