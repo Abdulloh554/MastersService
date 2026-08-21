@@ -107,7 +107,7 @@ export const updateRole = async (
   try {
     const userId = req.user?.userId;
     const { role } = req.body;
-    const result = await authService.updateRole(userId, role);
+    const result = await authService.updateRole(userId!, role);
 
     res.status(200).json({
       success: true,
