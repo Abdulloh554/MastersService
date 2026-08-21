@@ -7,6 +7,7 @@ import routes from "./routes";
 import { generalLimiter } from "./middleware/rateLimiter";
 import requestLogger from "./middleware/requestLogger";
 import errorHandler from "./middleware/errorHandler";
+import noSqlSanitizer from "./middleware/sanitize";
 
 const app = express();
 
@@ -24,6 +25,7 @@ app.use(
 app.use(cookieParser());
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
+app.use(noSqlSanitizer);
 
 app.use(generalLimiter);
 app.use(requestLogger);

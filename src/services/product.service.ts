@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import Product from "../models/Product";
 import Transaction from "../models/Transaction";
 import User from "../models/User";
@@ -176,56 +177,81 @@ export const checkoutProduct = async (
   productId: string,
   buyerId: string
 ) => {
-  const product = await Product.findById(productId);
+  // All balance/stock mutations run inside a transaction with atomic,
+  // conditional updates so concurrent checkouts cannot oversell or
+  // drive a balance negative.
+  const session = await mongoose.startSession();
 
-  if (!product) {
-    throw AppError.notFound("Product not found");
+  try {
+    return await session.withTransaction(async () => {
+      const product = await Product.findById(productId).session(session);
+
+      if (!product) {
+        throw AppError.notFound("Product not found");
+      }
+
+      if (!product.isActive) {
+        throw AppError.badRequest("Product is not available");
+      }
+
+      if (product.sellerId.toString() === buyerId) {
+        throw AppError.badRequest("You cannot purchase your own product");
+      }
+
+      const buyerExists = await User.exists({ _id: buyerId }).session(session);
+      if (!buyerExists) {
+        throw AppError.notFound("Buyer not found");
+      }
+
+      // Debit the buyer only if the balance actually covers the price.
+      const debit = await User.updateOne(
+        { _id: buyerId, balance: { $gte: product.price } },
+        { $inc: { balance: -product.price } }
+      ).session(session);
+
+      if (debit.modifiedCount === 0) {
+        throw AppError.badRequest("Insufficient balance");
+      }
+
+      // Credit the seller.
+      await User.updateOne(
+        { _id: product.sellerId },
+        { $inc: { balance: product.price } }
+      ).session(session);
+
+      // Decrement stock atomically; fails when stock is already 0.
+      const stockUpdate = await Product.updateOne(
+        { _id: product._id, stock: { $gt: 0 } },
+        { $inc: { stock: -1 } }
+      ).session(session);
+
+      if (stockUpdate.modifiedCount === 0) {
+        throw AppError.badRequest("Product is out of stock");
+      }
+
+      // Disable the product once stock reaches zero.
+      await Product.updateOne(
+        { _id: product._id, stock: 0 },
+        { $set: { isActive: false } }
+      ).session(session);
+
+      const [transaction] = await Transaction.create(
+        [
+          {
+            fromUser: buyerId,
+            toUser: product.sellerId,
+            amount: product.price,
+            type: "product_sale",
+            relatedProduct: product._id,
+            status: "completed",
+          },
+        ],
+        { session }
+      );
+
+      return { product, transaction };
+    });
+  } finally {
+    await session.endSession();
   }
-
-  if (!product.isActive) {
-    throw AppError.badRequest("Product is not available");
-  }
-
-  if (product.stock <= 0) {
-    throw AppError.badRequest("Product is out of stock");
-  }
-
-  if (product.sellerId.toString() === buyerId) {
-    throw AppError.badRequest("You cannot purchase your own product");
-  }
-
-  const buyer = await User.findById(buyerId);
-  if (!buyer) {
-    throw AppError.notFound("Buyer not found");
-  }
-
-  if (buyer.balance < product.price) {
-    throw AppError.badRequest("Insufficient balance");
-  }
-
-  buyer.balance -= product.price;
-  await buyer.save();
-
-  const seller = await User.findById(product.sellerId);
-  if (seller) {
-    seller.balance += product.price;
-    await seller.save();
-  }
-
-  product.stock -= 1;
-  if (product.stock === 0) {
-    product.isActive = false;
-  }
-  await product.save();
-
-  const transaction = await Transaction.create({
-    fromUser: buyerId,
-    toUser: product.sellerId,
-    amount: product.price,
-    type: "product_sale",
-    relatedProduct: product._id,
-    status: "completed",
-  });
-
-  return { product, transaction };
 };

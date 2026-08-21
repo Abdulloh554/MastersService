@@ -8,6 +8,11 @@ import { paginate } from "../utils/helpers";
 import { AppError } from "../utils/AppError";
 
 export const getDashboardStats = async () => {
+  const sixMonthsAgo = new Date();
+  sixMonthsAgo.setDate(1);
+  sixMonthsAgo.setHours(0, 0, 0, 0);
+  sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 5);
+
   const [
     totalUsers,
     totalMasters,
@@ -20,6 +25,8 @@ export const getDashboardStats = async () => {
     totalProducts,
     activeProducts,
     totalRevenue,
+    monthlyRevenueAgg,
+    recentOrdersRaw,
   ] = await Promise.all([
     User.countDocuments(),
     User.countDocuments({ role: "master" }),
@@ -35,7 +42,70 @@ export const getDashboardStats = async () => {
       { $match: { status: "completed" } },
       { $group: { _id: null, total: { $sum: "$amount" } } },
     ]),
+    Transaction.aggregate([
+      {
+        $match: {
+          status: "completed",
+          createdAt: { $gte: sixMonthsAgo },
+        },
+      },
+      {
+        $group: {
+          _id: {
+            year: { $year: "$createdAt" },
+            month: { $month: "$createdAt" },
+          },
+          total: { $sum: "$amount" },
+        },
+      },
+      { $sort: { "_id.year": 1, "_id.month": 1 } },
+    ]),
+    Order.find()
+      .sort({ createdAt: -1 })
+      .limit(5)
+      .populate<{ adId: { title: string } | null }>("adId", "title"),
   ]);
+
+  const monthNames = [
+    "Jan",
+    "Feb",
+    "Mar",
+    "Apr",
+    "May",
+    "Jun",
+    "Jul",
+    "Aug",
+    "Sep",
+    "Oct",
+    "Nov",
+    "Dec",
+  ];
+
+  const monthlyRevenue = [];
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date();
+    d.setDate(1);
+    d.setMonth(d.getMonth() - i);
+    const found = monthlyRevenueAgg.find(
+      (m) =>
+        m._id.year === d.getFullYear() && m._id.month === d.getMonth() + 1
+    );
+    monthlyRevenue.push({
+      month: monthNames[d.getMonth()],
+      amount: found ? found.total : 0,
+    });
+  }
+
+  const recentOrders = recentOrdersRaw.map((o) => ({
+    id: String(o._id),
+    status: o.status,
+    amount: o.amount,
+    createdAt: o.createdAt,
+    ad:
+      o.adId && (o.adId as { title?: string }).title
+        ? { title: (o.adId as { title: string }).title }
+        : null,
+  }));
 
   return {
     users: {
@@ -57,6 +127,8 @@ export const getDashboardStats = async () => {
       active: activeProducts,
     },
     revenue: totalRevenue.length > 0 ? totalRevenue[0].total : 0,
+    monthlyRevenue,
+    recentOrders,
   };
 };
 

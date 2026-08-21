@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import Ad from "../models/Ad";
 import Order from "../models/Order";
 import Transaction from "../models/Transaction";
@@ -163,85 +164,129 @@ export const acceptAd = async (
   adId: string,
   masterId: string
 ) => {
-  const ad = await Ad.findById(adId);
-
-  if (!ad) {
-    throw AppError.notFound("Ad not found");
-  }
-
-  if (ad.status !== "active") {
-    throw AppError.badRequest("Ad is not available for acceptance");
-  }
-
-  if (ad.clientId.toString() === masterId) {
-    throw AppError.badRequest("You cannot accept your own ad");
-  }
-
   const master = await User.findById(masterId);
   if (!master || master.role !== "master") {
     throw AppError.forbidden("Only masters can accept ads");
   }
 
-  ad.status = "accepted";
-  ad.acceptedBy = masterId as any;
-  await ad.save();
+  // Atomic transition active -> accepted so two concurrent masters
+  // cannot both claim the same ad.
+  const session = await mongoose.startSession();
 
-  const order = await Order.create({
-    adId: ad._id,
-    clientId: ad.clientId,
-    masterId: masterId,
-    amount: ad.budget,
-    status: "pending",
-  });
+  try {
+    return await session.withTransaction(async () => {
+      const ad = await Ad.findOneAndUpdate(
+        { _id: adId, status: "active" },
+        { $set: { status: "accepted", acceptedBy: masterId } },
+        { new: true }
+      ).session(session);
 
-  return { ad, order };
+      if (!ad) {
+        const exists = await Ad.exists({ _id: adId }).session(session);
+        if (!exists) {
+          throw AppError.notFound("Ad not found");
+        }
+
+        const ownAd = await Ad.exists({
+          _id: adId,
+          clientId: masterId,
+        }).session(session);
+        if (ownAd) {
+          throw AppError.badRequest("You cannot accept your own ad");
+        }
+
+        throw AppError.badRequest("Ad is not available for acceptance");
+      }
+
+      const [order] = await Order.create(
+        [
+          {
+            adId: ad._id,
+            clientId: ad.clientId,
+            masterId: masterId,
+            amount: ad.budget,
+            status: "pending",
+          },
+        ],
+        { session }
+      );
+
+      return { ad, order };
+    });
+  } finally {
+    await session.endSession();
+  }
 };
 
 export const completeAd = async (
   adId: string,
   userId: string
 ) => {
-  const ad = await Ad.findById(adId);
+  // Runs in a transaction with atomic conditional updates so a
+  // double-complete cannot pay out the budget twice.
+  const session = await mongoose.startSession();
 
-  if (!ad) {
-    throw AppError.notFound("Ad not found");
+  try {
+    return await session.withTransaction(async () => {
+      // Atomic status transition: succeeds only once per ad.
+      const ad = await Ad.findOneAndUpdate(
+        { _id: adId, status: "accepted" },
+        { $set: { status: "completed" } },
+        { new: true }
+      ).session(session);
+
+      if (!ad) {
+        const exists = await Ad.exists({ _id: adId }).session(session);
+        if (!exists) {
+          throw AppError.notFound("Ad not found");
+        }
+        throw AppError.badRequest("Ad is not in accepted status");
+      }
+
+      const isParticipant =
+        ad.acceptedBy?.toString() === userId ||
+        ad.clientId.toString() === userId;
+      if (!isParticipant) {
+        throw AppError.forbidden(
+          "Only the accepted master or client can complete this ad"
+        );
+      }
+
+      const order = await Order.findOneAndUpdate(
+        { adId: ad._id, status: { $ne: "completed" } },
+        { $set: { status: "completed", completedAt: new Date() } },
+        { new: true }
+      ).session(session);
+
+      let masterCredited = false;
+      if (ad.acceptedBy) {
+        const credit = await User.updateOne(
+          { _id: ad.acceptedBy },
+          { $inc: { balance: ad.budget } }
+        ).session(session);
+        masterCredited = credit.modifiedCount > 0;
+      }
+
+      const [transaction] = await Transaction.create(
+        [
+          {
+            fromUser: ad.clientId,
+            toUser: ad.acceptedBy,
+            amount: ad.budget,
+            type: "service_payment",
+            relatedAd: ad._id,
+            relatedOrder: order?._id,
+            status: "completed",
+          },
+        ],
+        { session }
+      );
+
+      return { ad, order, transaction, masterCredited };
+    });
+  } finally {
+    await session.endSession();
   }
-
-  if (ad.status !== "accepted") {
-    throw AppError.badRequest("Ad is not in accepted status");
-  }
-
-  if (ad.acceptedBy?.toString() !== userId && ad.clientId.toString() !== userId) {
-    throw AppError.forbidden("Only the accepted master or client can complete this ad");
-  }
-
-  ad.status = "completed";
-  await ad.save();
-
-  const order = await Order.findOne({ adId: ad._id });
-  if (order) {
-    order.status = "completed";
-    order.completedAt = new Date();
-    await order.save();
-  }
-
-  const master = await User.findById(ad.acceptedBy);
-  if (master) {
-    master.balance += ad.budget;
-    await master.save();
-  }
-
-  const transaction = await Transaction.create({
-    fromUser: ad.clientId,
-    toUser: ad.acceptedBy,
-    amount: ad.budget,
-    type: "service_payment",
-    relatedAd: ad._id,
-    relatedOrder: order?._id,
-    status: "completed",
-  });
-
-  return { ad, order, transaction };
 };
 
 export const cancelAd = async (adId: string, userId: string) => {
