@@ -11,7 +11,7 @@ dns.setServers(["8.8.8.8", "8.8.4.4"]);
 // Stored in normalized form (+998 prefix) so that logging in with
 // "999999999" works — auth service normalizes 9-digit phones to +998...
 const ADMIN_PHONE = "+998999999999";
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD ?? "";
 
 async function upsertAdmin() {
   let admin = await User.findOne({ role: UserRole.ADMIN });
