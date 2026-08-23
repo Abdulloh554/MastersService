@@ -14,16 +14,18 @@ export const createAdSchema = z.object({
     .min(1, "Category is required"),
   budget: z
     .number()
-    .min(0, "Budget must be a positive number"),
+    .min(0, "Budget must be a positive number")
+    .optional()
+    .default(0),
   images: z
     .array(z.string())
     .optional()
     .default([]),
   location: z.object({
-    address: z.string().min(1, "Address is required"),
-    lat: z.number(),
-    lng: z.number(),
-  }),
+    address: z.string().optional().default(''),
+    lat: z.number().optional().default(41.311081),
+    lng: z.number().optional().default(69.240562),
+  }).optional().default({ address: '', lat: 41.311081, lng: 69.240562 }),
 });
 
 export const updateAdSchema = z.object({
@@ -43,9 +45,9 @@ export const updateAdSchema = z.object({
   images: z.array(z.string()).optional(),
   location: z
     .object({
-      address: z.string().min(1, "Address is required"),
-      lat: z.number(),
-      lng: z.number(),
+      address: z.string().optional(),
+      lat: z.number().optional(),
+      lng: z.number().optional(),
     })
     .optional(),
 });

@@ -7,6 +7,7 @@ import productRoutes from "./product.routes";
 import favoriteRoutes from "./favorite.routes";
 import transactionRoutes from "./transaction.routes";
 import adminRoutes from "./admin.routes";
+import categoryRoutes from "./category.routes";
 
 const router = Router();
 
@@ -18,5 +19,6 @@ router.use("/products", productRoutes);
 router.use("/favorites", favoriteRoutes);
 router.use("/transactions", transactionRoutes);
 router.use("/admin", adminRoutes);
+router.use("/categories", categoryRoutes);
 
 export default router;

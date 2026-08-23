@@ -12,9 +12,9 @@ export const createAd = async (
     title: string;
     description: string;
     category: string;
-    budget: number;
+    budget?: number;
     images?: string[];
-    location: { address: string; lat: number; lng: number };
+    location?: { address?: string; lat?: number; lng?: number };
   }
 ) => {
   const ad = await Ad.create({
@@ -22,9 +22,9 @@ export const createAd = async (
     title: data.title,
     description: data.description,
     category: data.category,
-    budget: data.budget,
+    budget: data.budget ?? 0,
     images: data.images || [],
-    location: data.location,
+    location: data.location ?? { address: '', lat: 41.311081, lng: 69.240562 },
     status: "active",
   });
 

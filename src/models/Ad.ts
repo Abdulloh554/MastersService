@@ -51,6 +51,7 @@ const adSchema = new Schema<IAd>(
       type: Number,
       required: true,
       min: 0,
+      default: 0,
     },
     status: {
       type: String,
@@ -63,9 +64,9 @@ const adSchema = new Schema<IAd>(
       default: null,
     },
     location: {
-      address: { type: String, required: true },
-      lat: { type: Number, required: true },
-      lng: { type: Number, required: true },
+      address: { type: String, required: false, default: '' },
+      lat: { type: Number, required: false, default: 41.311081 },
+      lng: { type: Number, required: false, default: 69.240562 },
     },
   },
   {
