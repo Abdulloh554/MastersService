@@ -291,6 +291,27 @@ export const deleteProduct = async (productId: string) => {
   await Product.findByIdAndDelete(productId);
 };
 
+export const updateProductStatus = async (
+  productId: string,
+  isActive: boolean
+) => {
+  if (typeof isActive !== "boolean") {
+    throw AppError.badRequest("isActive must be a boolean");
+  }
+
+  const product = await Product.findByIdAndUpdate(
+    productId,
+    { $set: { isActive } },
+    { new: true }
+  );
+
+  if (!product) {
+    throw AppError.notFound("Product not found");
+  }
+
+  return product;
+};
+
 export const getAllOrders = async (
   page: number = 1,
   limit: number = 20,

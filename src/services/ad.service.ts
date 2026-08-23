@@ -7,6 +7,9 @@ import { AppError } from "../utils/AppError";
 import { paginate } from "../utils/helpers";
 import { createNotification } from "./notification.service";
 
+/** Usta har bir e'lonni qabul qilish uchun shu summani to'laydi (so'm). */
+export const ACCEPTANCE_FEE = 4999;
+
 export const createAd = async (
   clientId: string,
   data: {
@@ -208,6 +211,35 @@ export const acceptAd = async (
             masterId: masterId,
             amount: ad.budget,
             status: "pending",
+          },
+        ],
+        { session }
+      );
+
+      // Acceptance fee: the master pays ACCEPTANCE_FEE for every accepted
+      // ad. Conditional debit keeps this atomic — if the balance is too low
+      // the whole transaction (ad claim + order) rolls back.
+      const debit = await User.updateOne(
+        { _id: masterId, balance: { $gte: ACCEPTANCE_FEE } },
+        { $inc: { balance: -ACCEPTANCE_FEE } }
+      ).session(session);
+
+      if (debit.modifiedCount === 0) {
+        throw AppError.badRequest(
+          `Hisobingizda yetarli mablag' yo'q. E'lonni qabul qilish uchun kamida ${ACCEPTANCE_FEE} so'm bo'lishi kerak`
+        );
+      }
+
+      await Transaction.create(
+        [
+          {
+            fromUser: masterId,
+            toUser: masterId,
+            amount: ACCEPTANCE_FEE,
+            type: "acceptance_fee",
+            relatedAd: ad._id,
+            relatedOrder: order._id,
+            status: "completed",
           },
         ],
         { session }

@@ -162,6 +162,27 @@ export const deleteProduct = async (
   }
 };
 
+export const updateProductStatus = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const product = await adminService.updateProductStatus(
+      String(req.params.id),
+      Boolean((req.body as { isActive?: boolean }).isActive)
+    );
+
+    res.status(200).json({
+      success: true,
+      data: product,
+      message: "Product status updated successfully",
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const getAllOrders = async (
   req: Request,
   res: Response,

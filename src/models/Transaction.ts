@@ -4,7 +4,11 @@ export interface ITransaction extends Document {
   fromUser: mongoose.Types.ObjectId;
   toUser: mongoose.Types.ObjectId;
   amount: number;
-  type: "service_payment" | "product_sale" | "registration_bonus";
+  type:
+    | "service_payment"
+    | "product_sale"
+    | "registration_bonus"
+    | "acceptance_fee";
   relatedAd?: mongoose.Types.ObjectId;
   relatedOrder?: mongoose.Types.ObjectId;
   relatedProduct?: mongoose.Types.ObjectId;
@@ -32,7 +36,12 @@ const transactionSchema = new Schema<ITransaction>(
     },
     type: {
       type: String,
-      enum: ["service_payment", "product_sale", "registration_bonus"],
+      enum: [
+        "service_payment",
+        "product_sale",
+        "registration_bonus",
+        "acceptance_fee",
+      ],
       required: true,
     },
     relatedAd: {
