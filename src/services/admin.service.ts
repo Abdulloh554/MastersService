@@ -414,36 +414,106 @@ export const getReports = async (period: "day" | "week" | "month" | "year") => {
   };
 };
 
+type CategoryNameInput =
+  | string
+  | {
+      uz?: string;
+      ru?: string;
+      en?: string;
+      zhHans?: string;
+      zhHant?: string;
+    };
+
+const normalizeCategoryName = (input: CategoryNameInput | undefined) => {
+  if (typeof input === "string") {
+    const value = input.trim();
+    return { uz: value, ru: value, en: value, zhHans: value, zhHant: value };
+  }
+  const obj = input ?? {};
+  const fallback =
+    obj.uz || obj.ru || obj.en || obj.zhHans || obj.zhHant || "";
+  return {
+    uz: obj.uz || fallback,
+    ru: obj.ru || fallback,
+    en: obj.en || fallback,
+    zhHans: obj.zhHans || fallback,
+    zhHant: obj.zhHant || fallback,
+  };
+};
+
+const serializeCategory = (category: any) => ({
+  id: String(category._id),
+  name: category.name?.uz || category.name?.ru || category.name?.en || "",
+  nameAll: category.name,
+  icon: category.icon,
+  type: category.type,
+  isActive: category.isActive,
+  order: category.order,
+  sortOrder: category.order,
+  createdAt: category.createdAt,
+  updatedAt: category.updatedAt,
+});
+
 export const getCategories = async (type?: string) => {
   const filter: any = {};
   if (type) {
     filter.type = type;
   }
   const categories = await Category.find(filter).sort({ order: 1 });
-  return categories;
+  return categories.map(serializeCategory);
 };
 
 export const createCategory = async (data: {
-  name: { uz: string; ru: string; en: string; zhHans: string; zhHant: string };
-  icon: string;
-  type: "ad" | "product";
+  name: CategoryNameInput;
+  icon?: string;
+  type?: "ad" | "product";
   order?: number;
+  sortOrder?: number;
+  isActive?: boolean;
 }) => {
-  const category = await Category.create(data);
-  return category;
+  const order =
+    typeof data.order === "number"
+      ? data.order
+      : typeof data.sortOrder === "number"
+        ? data.sortOrder
+        : 0;
+
+  const category = await Category.create({
+    name: normalizeCategoryName(data.name),
+    icon: data.icon || "folder-outline",
+    type: data.type === "ad" ? "ad" : "product",
+    isActive: data.isActive !== false,
+    order,
+  });
+  return serializeCategory(category);
 };
 
 export const updateCategory = async (
   categoryId: string,
   data: {
-    name?: { uz: string; ru: string; en: string; zhHans: string; zhHant: string };
+    name?: CategoryNameInput;
     icon?: string;
     type?: "ad" | "product";
     isActive?: boolean;
     order?: number;
+    sortOrder?: number;
   }
 ) => {
-  const category = await Category.findByIdAndUpdate(categoryId, data, {
+  const update: Record<string, unknown> = {};
+
+  if (data.name !== undefined) {
+    update.name = normalizeCategoryName(data.name);
+  }
+  if (data.icon !== undefined) update.icon = data.icon;
+  if (data.type !== undefined) update.type = data.type;
+  if (data.isActive !== undefined) update.isActive = data.isActive;
+
+  if (data.order !== undefined || data.sortOrder !== undefined) {
+    update.order =
+      typeof data.order === "number" ? data.order : (data.sortOrder ?? 0);
+  }
+
+  const category = await Category.findByIdAndUpdate(categoryId, update, {
     new: true,
     runValidators: true,
   });
@@ -452,7 +522,7 @@ export const updateCategory = async (
     throw AppError.notFound("Category not found");
   }
 
-  return category;
+  return serializeCategory(category);
 };
 
 export const deleteCategory = async (categoryId: string) => {
