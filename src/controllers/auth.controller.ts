@@ -87,8 +87,10 @@ export const logout = async (
   next: NextFunction
 ) => {
   try {
-    const { refreshToken } = req.body;
-    await authService.logout(refreshToken);
+    const { refreshToken } = req.body ?? {};
+    if (refreshToken && typeof refreshToken === "string") {
+      await authService.logout(refreshToken);
+    }
 
     res.status(200).json({
       success: true,

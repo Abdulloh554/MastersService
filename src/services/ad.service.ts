@@ -5,6 +5,7 @@ import Transaction from "../models/Transaction";
 import User from "../models/User";
 import { AppError } from "../utils/AppError";
 import { paginate } from "../utils/helpers";
+import { createNotification } from "./notification.service";
 
 export const createAd = async (
   clientId: string,
@@ -173,8 +174,9 @@ export const acceptAd = async (
   // cannot both claim the same ad.
   const session = await mongoose.startSession();
 
+  let accepted: { ad: any; order: any };
   try {
-    return await session.withTransaction(async () => {
+    accepted = await session.withTransaction(async () => {
       const ad = await Ad.findOneAndUpdate(
         { _id: adId, status: "active" },
         { $set: { status: "accepted", acceptedBy: masterId } },
@@ -216,6 +218,19 @@ export const acceptAd = async (
   } finally {
     await session.endSession();
   }
+
+  createNotification({
+    userId: String(accepted.ad.clientId),
+    title: "E'lon qabul qilindi",
+    body: `${master.firstName} sizing e'loningizni qabul qildi`,
+    type: "order",
+    data: {
+      adId: String(accepted.ad._id),
+      orderId: String(accepted.order._id),
+    },
+  }).catch(() => undefined);
+
+  return accepted;
 };
 
 export const completeAd = async (
@@ -226,8 +241,14 @@ export const completeAd = async (
   // double-complete cannot pay out the budget twice.
   const session = await mongoose.startSession();
 
+  let completed: {
+    ad: any;
+    order: any;
+    transaction: any;
+    masterCredited: boolean;
+  };
   try {
-    return await session.withTransaction(async () => {
+    completed = await session.withTransaction(async () => {
       // Atomic status transition: succeeds only once per ad.
       const ad = await Ad.findOneAndUpdate(
         { _id: adId, status: "accepted" },
@@ -252,11 +273,30 @@ export const completeAd = async (
         );
       }
 
+      // Debit the client only if the balance actually covers the budget,
+      // mirroring checkoutProduct — prevents money creation.
+      if (ad.clientId) {
+        const debit = await User.updateOne(
+          { _id: ad.clientId, balance: { $gte: ad.budget } },
+          { $inc: { balance: -ad.budget } }
+        ).session(session);
+
+        if (debit.modifiedCount === 0) {
+          throw AppError.badRequest("Client has insufficient balance");
+        }
+      }
+
+      // Only a pending order can be completed; a cancelled order stays
+      // cancelled and can never be resurrected for payout.
       const order = await Order.findOneAndUpdate(
-        { adId: ad._id, status: { $ne: "completed" } },
+        { adId: ad._id, status: "pending" },
         { $set: { status: "completed", completedAt: new Date() } },
         { new: true }
       ).session(session);
+
+      if (!order) {
+        throw AppError.badRequest("No pending order found for this ad");
+      }
 
       let masterCredited = false;
       if (ad.acceptedBy) {
@@ -275,7 +315,7 @@ export const completeAd = async (
             amount: ad.budget,
             type: "service_payment",
             relatedAd: ad._id,
-            relatedOrder: order?._id,
+            relatedOrder: order._id,
             status: "completed",
           },
         ],
@@ -287,6 +327,34 @@ export const completeAd = async (
   } finally {
     await session.endSession();
   }
+
+  if (completed.ad.clientId) {
+    createNotification({
+      userId: String(completed.ad.clientId),
+      title: "Xizmat yakunlandi",
+      body: `${completed.ad.title} — ${completed.ad.budget} so\u2019m to\u2019landi`,
+      type: "order",
+      data: {
+        adId: String(completed.ad._id),
+        orderId: String(completed.order._id),
+      },
+    }).catch(() => undefined);
+  }
+
+  if (completed.ad.acceptedBy) {
+    createNotification({
+      userId: String(completed.ad.acceptedBy),
+      title: "To\u2019lov qabul qilindi",
+      body: `${completed.ad.title} — ${completed.ad.budget} so\u2019m balansga tushdi`,
+      type: "order",
+      data: {
+        adId: String(completed.ad._id),
+        orderId: String(completed.order._id),
+      },
+    }).catch(() => undefined);
+  }
+
+  return completed;
 };
 
 export const cancelAd = async (adId: string, userId: string) => {
@@ -315,6 +383,19 @@ export const cancelAd = async (adId: string, userId: string) => {
   if (order && order.status !== "cancelled") {
     order.status = "cancelled";
     await order.save();
+  }
+
+  // Notify the other participant about the cancellation.
+  const counterpart =
+    ad.clientId.toString() === userId ? ad.acceptedBy : ad.clientId;
+  if (counterpart) {
+    createNotification({
+      userId: String(counterpart),
+      title: "E'lon bekor qilindi",
+      body: `${ad.title} — e'lon bekor qilindi`,
+      type: "order",
+      data: { adId: String(ad._id) },
+    }).catch(() => undefined);
   }
 
   return ad;

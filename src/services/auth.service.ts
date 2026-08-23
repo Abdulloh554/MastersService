@@ -189,9 +189,13 @@ export const updateRole = async (userId: string, role: string) => {
     throw AppError.notFound("User not found");
   }
 
+  const wasMaster = user.role === "master";
   user.role = role as any;
-  if (role === "master") {
-    user.balance = 100000;
+
+  // Grant the signup bonus only on the first switch to master,
+  // not every time the endpoint is called.
+  if (role === "master" && !wasMaster) {
+    user.balance = Math.max(user.balance, 100000);
   }
   await user.save();
 

@@ -19,9 +19,18 @@ export const updateProfile = async (
     throw AppError.notFound("User not found");
   }
 
-  if (data.email && data.email !== user.email) {
+  // Whitelist: never allow role/balance/isActive/isVerified/phone via this endpoint
+  const allowed = ["firstName", "lastName", "email"] as const;
+  const safeData: Record<string, unknown> = {};
+  for (const key of allowed) {
+    if (data && (data as Record<string, unknown>)[key] !== undefined) {
+      safeData[key] = (data as Record<string, unknown>)[key];
+    }
+  }
+
+  if (safeData.email && safeData.email !== user.email) {
     const existingEmail = await User.findOne({
-      email: data.email,
+      email: safeData.email,
       _id: { $ne: userId },
     });
     if (existingEmail) {
@@ -29,7 +38,7 @@ export const updateProfile = async (
     }
   }
 
-  const updatedUser = await User.findByIdAndUpdate(userId, data, {
+  const updatedUser = await User.findByIdAndUpdate(userId, safeData, {
     new: true,
     runValidators: true,
   });

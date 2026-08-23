@@ -16,6 +16,10 @@ export const getOrders = async (
     filter = { clientId: userId };
   } else if (role === "master") {
     filter = { masterId: userId };
+  } else if (role !== "admin") {
+    // Orders only exist between clients and masters; every other role
+    // (e.g. seller) must not see the order book.
+    filter = { _id: null };
   }
 
   const [orders, total] = await Promise.all([

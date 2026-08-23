@@ -1,4 +1,6 @@
 import Favorite from "../models/Favorite";
+import Ad from "../models/Ad";
+import Product from "../models/Product";
 import { AppError } from "../utils/AppError";
 
 export const addFavorite = async (
@@ -54,7 +56,47 @@ export const getFavorites = async (
   }
 
   const favorites = await Favorite.find(filter)
-    .sort({ createdAt: -1 });
+    .sort({ createdAt: -1 })
+    .lean();
 
-  return favorites;
+  // Enrich each row with its target document so clients can render
+  // cards without N+1 requests.
+  const adIds = favorites
+    .filter((f) => f.targetType === "ad")
+    .map((f) => f.targetId);
+  const productIds = favorites
+    .filter((f) => f.targetType === "product")
+    .map((f) => f.targetId);
+
+  const [ads, products] = await Promise.all([
+    adIds.length
+      ? Ad.find({ _id: { $in: adIds } })
+          .populate("category", "name icon")
+          .select("title description budget images category createdAt")
+          .lean()
+      : Promise.resolve([]),
+    productIds.length
+      ? Product.find({ _id: { $in: productIds } })
+          .populate("category", "name icon")
+          .select("name description price images category isActive createdAt")
+          .lean()
+      : Promise.resolve([]),
+  ]);
+
+  const adMap = new Map(ads.map((a: any) => [String(a._id), a]));
+  const productMap = new Map(products.map((p: any) => [String(p._id), p]));
+
+  return favorites.map((f: any) => {
+    const target =
+      f.targetType === "ad" ? adMap.get(String(f.targetId)) : productMap.get(String(f.targetId));
+
+    return {
+      ...f,
+      id: String(f._id),
+      adId: f.targetType === "ad" ? String(f.targetId) : undefined,
+      productId: f.targetType === "product" ? String(f.targetId) : undefined,
+      ad: f.targetType === "ad" ? target ?? undefined : undefined,
+      product: f.targetType === "product" ? target ?? undefined : undefined,
+    };
+  });
 };
