@@ -3,6 +3,7 @@ import * as productController from "../controllers/product.controller";
 import authMiddleware from "../middleware/auth.middleware";
 import requireRole from "../middleware/role.middleware";
 import validate from "../middleware/validate.middleware";
+import { publicReadLimiter } from "../middleware/rateLimiter";
 import { moderationMiddleware } from "../middleware/contentModeration";
 import { createProductSchema, updateProductSchema } from "../validators/product.validator";
 
@@ -17,11 +18,11 @@ router.post(
   productController.createProduct
 );
 
-router.get("/", productController.getProducts);
+router.get("/", publicReadLimiter, productController.getProducts);
 
 router.get("/seller/me", authMiddleware, requireRole("seller"), productController.getSellerProducts);
 
-router.get("/:id", productController.getProductById);
+router.get("/:id", publicReadLimiter, productController.getProductById);
 
 router.put(
   "/:id",

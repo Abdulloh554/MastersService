@@ -85,7 +85,9 @@ async function analyzeAndUpdateReview(
  * are still returned (kept visible) but are EXCLUDED from the average.
  */
 export const getReviewsForUser = async (targetUserId: string) => {
-  const reviews = await Review.find({ targetUserId }).sort({ createdAt: -1 });
+  const reviews = await Review.find({ targetUserId })
+    .sort({ createdAt: -1 })
+    .lean();
 
   const trusted = reviews.filter((r) => !r.isSuspicious);
   const averageRating =

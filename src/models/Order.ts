@@ -48,8 +48,9 @@ const orderSchema = new Schema<IOrder>(
   }
 );
 
-orderSchema.index({ masterId: 1 });
-orderSchema.index({ clientId: 1 });
+orderSchema.index({ masterId: 1, status: 1 });
+orderSchema.index({ clientId: 1, status: 1 });
+orderSchema.index({ adId: 1 });
 
 const Order = mongoose.model<IOrder>("Order", orderSchema);
 

@@ -70,8 +70,12 @@ const transactionSchema = new Schema<ITransaction>(
   }
 );
 
-transactionSchema.index({ toUser: 1 });
-transactionSchema.index({ fromUser: 1 });
+transactionSchema.index({ fromUser: 1, createdAt: -1 });
+transactionSchema.index({ toUser: 1, createdAt: -1 });
+transactionSchema.index({ status: 1, createdAt: -1 });
+transactionSchema.index({ relatedAd: 1 });
+transactionSchema.index({ relatedOrder: 1 });
+transactionSchema.index({ relatedProduct: 1 });
 
 const Transaction = mongoose.model<ITransaction>(
   "Transaction",

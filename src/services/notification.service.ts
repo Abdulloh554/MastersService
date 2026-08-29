@@ -1,5 +1,6 @@
 import Notification from "../models/Notification";
 import { AppError } from "../utils/AppError";
+import { paginate } from "../utils/helpers";
 
 interface CreateNotificationInput {
   userId: string;
@@ -37,13 +38,13 @@ export const getNotifications = async (
   notifications: Array<Record<string, unknown>>;
   pagination: { page: number; limit: number; total: number; totalPages: number };
 }> => {
-  const skip = (page - 1) * limit;
+  const { skip, limit: safeLimit, page: safePage } = paginate(page, limit);
 
   const [notifications, total] = await Promise.all([
     Notification.find({ userId })
       .sort({ createdAt: -1 })
       .skip(skip)
-      .limit(limit)
+      .limit(safeLimit)
       .lean(),
     Notification.countDocuments({ userId }),
   ]);
@@ -54,10 +55,10 @@ export const getNotifications = async (
       id: String(n._id),
     })),
     pagination: {
-      page,
-      limit,
+      page: safePage,
+      limit: safeLimit,
       total,
-      totalPages: Math.ceil(total / limit) || 1,
+      totalPages: Math.ceil(total / safeLimit) || 1,
     },
   };
 };

@@ -4,6 +4,7 @@ import authMiddleware from "../middleware/auth.middleware";
 import validate from "../middleware/validate.middleware";
 import { createReviewSchema } from "../validators/review.validator";
 import { moderationMiddleware } from "../middleware/contentModeration";
+import { publicReadLimiter } from "../middleware/rateLimiter";
 
 const router = Router();
 
@@ -15,6 +16,6 @@ router.post(
   reviewController.createReview
 );
 
-router.get("/user/:userId", reviewController.getReviewsForUser);
+router.get("/user/:userId", publicReadLimiter, reviewController.getReviewsForUser);
 
 export default router;

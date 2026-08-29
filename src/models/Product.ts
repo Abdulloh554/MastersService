@@ -98,8 +98,8 @@ const productSchema = new Schema<IProduct>(
   }
 );
 
-productSchema.index({ sellerId: 1 });
-productSchema.index({ category: 1 });
+productSchema.index({ sellerId: 1, createdAt: -1 });
+productSchema.index({ category: 1, isActive: 1 });
 
 const Product = mongoose.model<IProduct>("Product", productSchema);
 

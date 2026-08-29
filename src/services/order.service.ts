@@ -29,7 +29,8 @@ export const getOrders = async (
       .populate("masterId", "firstName lastName avatar")
       .skip(skip)
       .limit(safeLimit)
-      .sort({ createdAt: -1 }),
+      .sort({ createdAt: -1 })
+      .lean(),
     Order.countDocuments(filter),
   ]);
 

@@ -104,7 +104,8 @@ export const getProducts = async (
       .populate("category")
       .skip(skip)
       .limit(safeLimit)
-      .sort({ createdAt: -1 }),
+      .sort({ createdAt: -1 })
+      .lean(),
     Product.countDocuments(filter),
   ]);
 
@@ -192,7 +193,8 @@ export const getSellerProducts = async (
       .populate("category")
       .skip(skip)
       .limit(safeLimit)
-      .sort({ createdAt: -1 }),
+      .sort({ createdAt: -1 })
+      .lean(),
     Product.countDocuments(filter),
   ]);
 

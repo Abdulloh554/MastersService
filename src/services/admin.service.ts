@@ -11,6 +11,25 @@ import { AppError } from "../utils/AppError";
 import { generateInsights } from "./ai/insights.service";
 
 export const getDashboardStats = async () => {
+  // Dashboard oldindan hisoblanmaydi, lekin 1M'da har refresh'da 11
+  // countDocuments narxli bo'ladi. 60 soniyalik in-memory cache yukni
+  // sezilarli kamaytiradi; multi-instance'da Redisga o'tkazish (P4).
+  const now = Date.now();
+  if (dashboardCache && now - dashboardCache.at < DASHBOARD_CACHE_TTL_MS) {
+    return dashboardCache.data;
+  }
+  const data = await computeDashboardStats();
+  dashboardCache = { at: now, data };
+  return data;
+};
+
+const DASHBOARD_CACHE_TTL_MS = 60 * 1000;
+let dashboardCache: {
+  at: number;
+  data: Awaited<ReturnType<typeof computeDashboardStats>>;
+} | null = null;
+
+const computeDashboardStats = async () => {
   const sixMonthsAgo = new Date();
   sixMonthsAgo.setDate(1);
   sixMonthsAgo.setHours(0, 0, 0, 0);
@@ -31,15 +50,15 @@ export const getDashboardStats = async () => {
     monthlyRevenueAgg,
     recentOrdersRaw,
   ] = await Promise.all([
-    User.countDocuments(),
+    User.estimatedDocumentCount(),
     User.countDocuments({ role: "master" }),
     User.countDocuments({ role: "client" }),
     User.countDocuments({ role: "seller" }),
-    Ad.countDocuments(),
+    Ad.estimatedDocumentCount(),
     Ad.countDocuments({ status: "active" }),
-    Order.countDocuments(),
+    Order.estimatedDocumentCount(),
     Order.countDocuments({ status: "completed" }),
-    Product.countDocuments(),
+    Product.estimatedDocumentCount(),
     Product.countDocuments({ isActive: true }),
     Transaction.aggregate([
       { $match: { status: "completed" } },
@@ -159,7 +178,7 @@ export const getAllUsers = async (
   }
 
   const [users, total] = await Promise.all([
-    User.find(filter).skip(skip).limit(safeLimit).sort({ createdAt: -1 }),
+    User.find(filter).skip(skip).limit(safeLimit).sort({ createdAt: -1 }).lean(),
     User.countDocuments(filter),
   ]);
 
@@ -227,7 +246,8 @@ export const getAllAds = async (
       .populate("acceptedBy", "firstName lastName avatar")
       .skip(skip)
       .limit(safeLimit)
-      .sort({ createdAt: -1 }),
+      .sort({ createdAt: -1 })
+      .lean(),
     Ad.countDocuments(filter),
   ]);
 
@@ -271,7 +291,8 @@ export const getAllProducts = async (
       .populate("category")
       .skip(skip)
       .limit(safeLimit)
-      .sort({ createdAt: -1 }),
+      .sort({ createdAt: -1 })
+      .lean(),
     Product.countDocuments(filter),
   ]);
 
@@ -334,7 +355,8 @@ export const getAllOrders = async (
       .populate("masterId", "firstName lastName avatar")
       .skip(skip)
       .limit(safeLimit)
-      .sort({ createdAt: -1 }),
+      .sort({ createdAt: -1 })
+      .lean(),
     Order.countDocuments(filter),
   ]);
 
@@ -369,7 +391,8 @@ export const getAllTransactions = async (
       .populate("relatedProduct", "name")
       .skip(skip)
       .limit(safeLimit)
-      .sort({ createdAt: -1 }),
+      .sort({ createdAt: -1 })
+      .lean(),
     Transaction.countDocuments(filter),
   ]);
 
@@ -483,7 +506,7 @@ export const getCategories = async (type?: string) => {
   if (type) {
     filter.type = type;
   }
-  const categories = await Category.find(filter).sort({ order: 1 });
+  const categories = await Category.find(filter).sort({ order: 1 }).lean();
   return categories.map(serializeCategory);
 };
 
@@ -560,7 +583,9 @@ export const deleteCategory = async (categoryId: string) => {
 export const getModerationQueue = async (status: string = "pending") => {
   const statuses = ["pending", "approved", "rejected"];
   const queryStatus = statuses.includes(status) ? status : "pending";
-  return ModerationQueue.find({ status: queryStatus }).sort({ createdAt: -1 });
+  return ModerationQueue.find({ status: queryStatus })
+    .sort({ createdAt: -1 })
+    .lean();
 };
 
 export const resolveModeration = async (
@@ -581,7 +606,7 @@ export const resolveModeration = async (
 export const getFraudFlags = async (status: string = "pending") => {
   const statuses = ["pending", "reviewed_ok", "reviewed_fraud"];
   const queryStatus = statuses.includes(status) ? status : "pending";
-  return FraudFlag.find({ status: queryStatus }).sort({ riskScore: -1 });
+  return FraudFlag.find({ status: queryStatus }).sort({ riskScore: -1 }).lean();
 };
 
 export const resolveFraudFlag = async (

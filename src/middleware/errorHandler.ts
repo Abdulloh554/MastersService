@@ -57,6 +57,28 @@ const errorHandler = (
     });
   }
 
+  // express.json() / urlencoded malformed-payload xatolari (body-parser).
+  if (err.type === "entity.parse.failed") {
+    return res.status(400).json({
+      success: false,
+      message: "Invalid JSON payload",
+    });
+  }
+
+  if (err.type === "entity.too.large") {
+    return res.status(413).json({
+      success: false,
+      message: "Payload too large",
+    });
+  }
+
+  if (err.name === "MulterError") {
+    return res.status(400).json({
+      success: false,
+      message: err.message || "File upload error",
+    });
+  }
+
   logger.error({ err }, "Unhandled error");
 
   return res.status(500).json({

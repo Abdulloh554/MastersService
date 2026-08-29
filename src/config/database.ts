@@ -8,7 +8,11 @@ dns.setServers(["8.8.8.8", "8.8.4.4"]);
 const connectDatabase = async (): Promise<void> => {
   try {
     await mongoose.connect(config.mongodbUri, {
+      maxPoolSize: 50,
+      minPoolSize: 10,
       serverSelectionTimeoutMS: 15000,
+      socketTimeoutMS: 45000,
+      family: 4,
     });
     logger.info("MongoDB connected successfully");
   } catch (err: any) {

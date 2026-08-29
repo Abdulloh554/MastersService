@@ -10,7 +10,7 @@ export const getCategories = async (req: Request, res: Response) => {
       filter.type = type;
     }
 
-    const categories = await Category.find(filter).sort({ order: 1 });
+    const categories = await Category.find(filter).sort({ order: 1 }).lean();
 
     res.status(200).json({
       success: true,

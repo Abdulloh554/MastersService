@@ -112,7 +112,8 @@ export const getAds = async (
       .populate("acceptedBy", "firstName lastName avatar")
       .skip(skip)
       .limit(safeLimit)
-      .sort({ createdAt: -1 }),
+      .sort({ createdAt: -1 })
+      .lean(),
     Ad.countDocuments(filter),
   ]);
 
@@ -478,7 +479,8 @@ export const getMyAds = async (
       .populate("acceptedBy", "firstName lastName avatar")
       .skip(skip)
       .limit(safeLimit)
-      .sort({ createdAt: -1 }),
+      .sort({ createdAt: -1 })
+      .lean(),
     Ad.countDocuments(filter),
   ]);
 

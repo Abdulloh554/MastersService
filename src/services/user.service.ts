@@ -163,7 +163,7 @@ export const getAllUsers = async (
   }
 
   const [users, total] = await Promise.all([
-    User.find(filter).skip(skip).limit(safeLimit).sort({ createdAt: -1 }),
+    User.find(filter).skip(skip).limit(safeLimit).sort({ createdAt: -1 }).lean(),
     User.countDocuments(filter),
   ]);
 

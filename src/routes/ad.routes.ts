@@ -3,6 +3,7 @@ import * as adController from "../controllers/ad.controller";
 import authMiddleware from "../middleware/auth.middleware";
 import requireRole from "../middleware/role.middleware";
 import validate from "../middleware/validate.middleware";
+import { publicReadLimiter } from "../middleware/rateLimiter";
 import { moderationMiddleware } from "../middleware/contentModeration";
 import { createAdSchema, updateAdSchema } from "../validators/ad.validator";
 
@@ -17,11 +18,11 @@ router.post(
   adController.createAd
 );
 
-router.get("/", adController.getAds);
+router.get("/", publicReadLimiter, adController.getAds);
 
 router.get("/my", authMiddleware, adController.getMyAds);
 
-router.get("/:id", adController.getAdById);
+router.get("/:id", publicReadLimiter, adController.getAdById);
 
 router.put(
   "/:id",

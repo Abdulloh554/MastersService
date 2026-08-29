@@ -11,6 +11,10 @@ import noSqlSanitizer from "./middleware/sanitize";
 
 const app = express();
 
+// Express 5: req.ip (rate limiting, audit) reverse-proxy (Render/NGINX)
+// orqasida ham to'g'ri ishlashi uchun trust proxy yoqiladi. Faqat bitta hop.
+app.set("trust proxy", 1);
+
 app.use(helmet());
 
 app.use(

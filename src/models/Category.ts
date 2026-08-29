@@ -58,6 +58,8 @@ const categorySchema = new Schema<ICategory>(
   }
 );
 
+categorySchema.index({ type: 1, isActive: 1, order: 1 });
+
 const Category = mongoose.model<ICategory>("Category", categorySchema);
 
 export default Category;

@@ -31,6 +31,7 @@ const favoriteSchema = new Schema<IFavorite>(
 );
 
 favoriteSchema.index({ userId: 1, targetType: 1, targetId: 1 }, { unique: true });
+favoriteSchema.index({ targetId: 1 });
 
 const Favorite = mongoose.model<IFavorite>("Favorite", favoriteSchema);
 

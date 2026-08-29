@@ -90,8 +90,10 @@ const adSchema = new Schema<IAd>(
   }
 );
 
-adSchema.index({ status: 1 });
-adSchema.index({ clientId: 1 });
+adSchema.index({ status: 1, createdAt: -1 });
+adSchema.index({ clientId: 1, createdAt: -1 });
+adSchema.index({ category: 1, status: 1 });
+adSchema.index({ acceptedBy: 1 });
 
 const Ad = mongoose.model<IAd>("Ad", adSchema);
 
