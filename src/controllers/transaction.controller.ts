@@ -18,6 +18,7 @@ export const getTransactions = async (
       success: true,
       message: "Transactions retrieved successfully",
       data: result.transactions,
+      summary: result.summary,
       pagination: result.pagination,
     });
   } catch (error) {

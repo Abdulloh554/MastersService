@@ -3,6 +3,7 @@ import * as adController from "../controllers/ad.controller";
 import authMiddleware from "../middleware/auth.middleware";
 import requireRole from "../middleware/role.middleware";
 import validate from "../middleware/validate.middleware";
+import { moderationMiddleware } from "../middleware/contentModeration";
 import { createAdSchema, updateAdSchema } from "../validators/ad.validator";
 
 const router = Router();
@@ -12,6 +13,7 @@ router.post(
   authMiddleware,
   requireRole("client"),
   validate(createAdSchema),
+  moderationMiddleware,
   adController.createAd
 );
 

@@ -40,4 +40,14 @@ router.put("/categories/:id", adminController.updateCategory);
 
 router.delete("/categories/:id", adminController.deleteCategory);
 
+router.get("/moderation-queue", adminController.getModerationQueue);
+
+router.patch("/moderation-queue/:id", adminController.resolveModeration);
+
+router.get("/fraud-flags", adminController.getFraudFlags);
+
+router.patch("/fraud-flags/:id", adminController.resolveFraudFlag);
+
+router.get("/ai-insights", adminController.getAiInsights);
+
 export default router;

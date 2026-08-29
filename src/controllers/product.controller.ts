@@ -9,7 +9,8 @@ export const createProduct = async (
   try {
     const product = await productService.createProduct(
       req.user!.userId,
-      req.body
+      req.body,
+      req.moderatedResult
     );
 
     res.status(201).json({

@@ -3,6 +3,7 @@ import * as productController from "../controllers/product.controller";
 import authMiddleware from "../middleware/auth.middleware";
 import requireRole from "../middleware/role.middleware";
 import validate from "../middleware/validate.middleware";
+import { moderationMiddleware } from "../middleware/contentModeration";
 import { createProductSchema, updateProductSchema } from "../validators/product.validator";
 
 const router = Router();
@@ -12,6 +13,7 @@ router.post(
   authMiddleware,
   requireRole("seller"),
   validate(createProductSchema),
+  moderationMiddleware,
   productController.createProduct
 );
 

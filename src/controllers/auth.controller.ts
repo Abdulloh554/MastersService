@@ -74,6 +74,7 @@ export const refreshTokens = async (
       data: {
         accessToken: tokens.accessToken,
         refreshToken: tokens.refreshToken,
+        user: tokens.user,
       },
     });
   } catch (error) {
@@ -114,6 +115,44 @@ export const updateRole = async (
     res.status(200).json({
       success: true,
       message: "Role updated successfully",
+      data: result,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const forgotPassword = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const { phone } = req.body;
+    const result = await authService.requestPasswordReset(phone);
+
+    res.status(200).json({
+      success: true,
+      message: "Reset code sent",
+      data: result,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const resetPassword = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const { token, password } = req.body;
+    const result = await authService.resetPassword(token, password);
+
+    res.status(200).json({
+      success: true,
+      message: "Password reset successfully",
       data: result,
     });
   } catch (error) {

@@ -12,7 +12,15 @@ export const getProfile = async (userId: string) => {
 
 export const updateProfile = async (
   userId: string,
-  data: { firstName?: string; lastName?: string; email?: string }
+  data: {
+    firstName?: string;
+    lastName?: string;
+    email?: string;
+    city?: string;
+    district?: string;
+    address?: string;
+    bio?: string;
+  }
 ) => {
   const user = await User.findById(userId);
   if (!user) {
@@ -20,7 +28,15 @@ export const updateProfile = async (
   }
 
   // Whitelist: never allow role/balance/isActive/isVerified/phone via this endpoint
-  const allowed = ["firstName", "lastName", "email"] as const;
+  const allowed = [
+    "firstName",
+    "lastName",
+    "email",
+    "city",
+    "district",
+    "address",
+    "bio",
+  ] as const;
   const safeData: Record<string, unknown> = {};
   for (const key of allowed) {
     if (data && (data as Record<string, unknown>)[key] !== undefined) {
@@ -37,6 +53,17 @@ export const updateProfile = async (
       throw AppError.conflict("Email already in use");
     }
   }
+
+  if (typeof safeData.bio === "string" && safeData.bio.trim()) {
+    const supportedLang =
+      user.language === "uz" || user.language === "ru" || user.language === "en"
+        ? user.language
+        : "en";
+    const bioTranslations: Record<string, string> = { ...user.bioTranslations };
+    bioTranslations[supportedLang] = safeData.bio.trim();
+    safeData.bioTranslations = bioTranslations;
+  }
+  delete safeData.bio;
 
   const updatedUser = await User.findByIdAndUpdate(userId, safeData, {
     new: true,

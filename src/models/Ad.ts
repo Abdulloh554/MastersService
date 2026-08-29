@@ -9,6 +9,12 @@ export interface IAd extends Document {
   budget: number;
   status: "pending" | "active" | "accepted" | "completed" | "cancelled";
   acceptedBy?: mongoose.Types.ObjectId;
+  moderation?: {
+    isSafe: boolean;
+    confidence: number;
+    status: "none" | "pending_review";
+    flaggedCategories: string[];
+  };
   location: {
     address: string;
     lat: number;
@@ -62,6 +68,16 @@ const adSchema = new Schema<IAd>(
       type: Schema.Types.ObjectId,
       ref: "User",
       default: null,
+    },
+    moderation: {
+      isSafe: { type: Boolean, default: true },
+      confidence: { type: Number, default: 1 },
+      status: {
+        type: String,
+        enum: ["none", "pending_review"],
+        default: "none",
+      },
+      flaggedCategories: [{ type: String }],
     },
     location: {
       address: { type: String, required: false, default: '' },

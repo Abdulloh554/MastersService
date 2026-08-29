@@ -32,6 +32,11 @@ export interface IUser extends Document {
   balance: number;
   language: LanguageCode;
   theme: ThemeMode;
+  bioTranslations?: {
+    uz: string;
+    ru: string;
+    en: string;
+  };
   isActive: boolean;
   isVerified: boolean;
   createdAt: Date;

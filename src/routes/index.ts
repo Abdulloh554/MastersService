@@ -9,6 +9,8 @@ import transactionRoutes from "./transaction.routes";
 import adminRoutes from "./admin.routes";
 import categoryRoutes from "./category.routes";
 import notificationRoutes from "./notification.routes";
+import aiRoutes from "./ai.routes";
+import reviewRoutes from "./review.routes";
 
 const router = Router();
 
@@ -22,5 +24,7 @@ router.use("/transactions", transactionRoutes);
 router.use("/admin", adminRoutes);
 router.use("/categories", categoryRoutes);
 router.use("/notifications", notificationRoutes);
+router.use("/ai", aiRoutes);
+router.use("/reviews", reviewRoutes);
 
 export default router;

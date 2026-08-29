@@ -61,6 +61,11 @@ const userSchema = new Schema<IUser>(
       enum: Object.values(ThemeMode),
       default: ThemeMode.SYSTEM,
     },
+    bioTranslations: {
+      uz: { type: String, default: "" },
+      ru: { type: String, default: "" },
+      en: { type: String, default: "" },
+    },
     isActive: {
       type: Boolean,
       default: true,

@@ -7,6 +7,11 @@ declare global {
         userId: string;
         role: UserRole;
       };
+      moderatedResult?: {
+        isSafe: boolean;
+        categories: string[];
+        confidence: number;
+      };
     }
   }
 }

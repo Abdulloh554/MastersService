@@ -7,7 +7,7 @@ export const createAd = async (
   next: NextFunction
 ) => {
   try {
-    const ad = await adService.createAd(req.user!.userId, req.body);
+    const ad = await adService.createAd(req.user!.userId, req.body, req.moderatedResult);
 
     res.status(201).json({
       success: true,

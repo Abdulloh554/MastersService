@@ -35,4 +35,18 @@ export const config = {
   clientUrl: process.env.CLIENT_URL!,
   isDevelopment: process.env.NODE_ENV === "development",
   isProduction: process.env.NODE_ENV === "production",
+  ai: {
+    groqApiKeys: (process.env.GROQ_API_KEYS || "")
+      .split(",")
+      .map((k) => k.trim())
+      .filter(Boolean),
+    model: process.env.GROQ_MODEL || "llama-3.3-70b-versatile",
+    visionModel:
+      process.env.GROQ_VISION_MODEL || "llama-3.2-11b-vision-preview",
+    timeoutMs: parseInt(process.env.GROQ_TIMEOUT_MS || "30000", 10),
+    maxRetries: parseInt(process.env.GROQ_MAX_RETRIES || "2", 10),
+    enabled: Boolean(
+      (process.env.GROQ_API_KEYS || "").split(",").filter((k) => k.trim()).length
+    ),
+  },
 };

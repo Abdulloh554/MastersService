@@ -4,8 +4,11 @@ import Order from "../models/Order";
 import Product from "../models/Product";
 import Transaction from "../models/Transaction";
 import Category from "../models/Category";
+import FraudFlag from "../models/FraudFlag";
+import ModerationQueue from "../models/ModerationQueue";
 import { paginate } from "../utils/helpers";
 import { AppError } from "../utils/AppError";
+import { generateInsights } from "./ai/insights.service";
 
 export const getDashboardStats = async () => {
   const sixMonthsAgo = new Date();
@@ -552,4 +555,52 @@ export const deleteCategory = async (categoryId: string) => {
     throw AppError.notFound("Category not found");
   }
   await Category.findByIdAndDelete(categoryId);
+};
+
+export const getModerationQueue = async (status: string = "pending") => {
+  const statuses = ["pending", "approved", "rejected"];
+  const queryStatus = statuses.includes(status) ? status : "pending";
+  return ModerationQueue.find({ status: queryStatus }).sort({ createdAt: -1 });
+};
+
+export const resolveModeration = async (
+  id: string,
+  decision: "approved" | "rejected",
+  adminId: string
+) => {
+  const item = await ModerationQueue.findById(id);
+  if (!item) {
+    throw AppError.notFound("Moderation item not found");
+  }
+  item.status = decision;
+  item.resolvedBy = adminId as any;
+  await item.save();
+  return item;
+};
+
+export const getFraudFlags = async (status: string = "pending") => {
+  const statuses = ["pending", "reviewed_ok", "reviewed_fraud"];
+  const queryStatus = statuses.includes(status) ? status : "pending";
+  return FraudFlag.find({ status: queryStatus }).sort({ riskScore: -1 });
+};
+
+export const resolveFraudFlag = async (
+  id: string,
+  verdict: "reviewed_ok" | "reviewed_fraud",
+  adminId: string
+) => {
+  const flag = await FraudFlag.findById(id);
+  if (!flag) {
+    throw AppError.notFound("Fraud flag not found");
+  }
+  flag.status = verdict;
+  flag.reviewedBy = adminId as any;
+  await flag.save();
+  return flag;
+};
+
+export const getAiInsights = async (period: string) => {
+  const valid = ["day", "week", "month", "year"];
+  const safe = valid.includes(period) ? period : "week";
+  return generateInsights(safe);
 };

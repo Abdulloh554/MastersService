@@ -324,3 +324,94 @@ export const deleteCategory = async (
     next(error);
   }
 };
+
+export const getModerationQueue = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const status = (req.query.status as string) || "pending";
+    const queue = await adminService.getModerationQueue(status);
+
+    res.status(200).json({ success: true, data: queue });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const resolveModeration = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const decision = req.body.decision as "approved" | "rejected";
+    const item = await adminService.resolveModeration(
+      String(req.params.id),
+      decision,
+      req.user!.userId
+    );
+
+    res.status(200).json({
+      success: true,
+      message: "Moderation item updated",
+      data: item,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getFraudFlags = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const status = (req.query.status as string) || "pending";
+    const flags = await adminService.getFraudFlags(status);
+
+    res.status(200).json({ success: true, data: flags });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const resolveFraudFlag = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const verdict = req.body.verdict as "reviewed_ok" | "reviewed_fraud";
+    const flag = await adminService.resolveFraudFlag(
+      String(req.params.id),
+      verdict,
+      req.user!.userId
+    );
+
+    res.status(200).json({
+      success: true,
+      message: "Fraud flag updated",
+      data: flag,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getAiInsights = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const period = (req.query.period as string) || "week";
+    const insights = await adminService.getAiInsights(period);
+
+    res.status(200).json({ success: true, data: insights });
+  } catch (error) {
+    next(error);
+  }
+};

@@ -6,6 +6,10 @@ import User from "../models/User";
 import { AppError } from "../utils/AppError";
 import { paginate } from "../utils/helpers";
 import { createNotification } from "./notification.service";
+import {
+  enqueueModeration,
+  ModerationResult,
+} from "./ai/moderation.service";
 
 /** Usta har bir e'lonni qabul qilish uchun shu summani to'laydi (so'm). */
 export const ACCEPTANCE_FEE = 4999;
@@ -19,7 +23,8 @@ export const createAd = async (
     budget?: number;
     images?: string[];
     location?: { address?: string; lat?: number; lng?: number };
-  }
+  },
+  moderation?: ModerationResult
 ) => {
   const ad = await Ad.create({
     clientId,
@@ -31,6 +36,31 @@ export const createAd = async (
     location: data.location ?? { address: '', lat: 41.311081, lng: 69.240562 },
     status: "active",
   });
+
+  if (moderation) {
+    const pending =
+      !moderation.isSafe &&
+      moderation.confidence >= 0.5 &&
+      moderation.confidence <= 0.8;
+    await Ad.updateOne(
+      { _id: ad.id },
+      {
+        moderation: {
+          isSafe: moderation.isSafe,
+          confidence: moderation.confidence,
+          status: pending ? "pending_review" : "none",
+          flaggedCategories: moderation.categories,
+        },
+      }
+    );
+    if (pending) {
+      await enqueueModeration({
+        entityType: "Ad",
+        entityId: ad.id,
+        result: moderation,
+      });
+    }
+  }
 
   return ad;
 };

@@ -4,6 +4,37 @@ import Transaction from "../models/Transaction";
 import User from "../models/User";
 import { AppError } from "../utils/AppError";
 import { paginate } from "../utils/helpers";
+import {
+  enqueueModeration,
+  ModerationResult,
+} from "./ai/moderation.service";
+
+const applyModeration = async (
+  productId: string,
+  moderation?: ModerationResult
+) => {
+  if (!moderation) return;
+  const pending =
+    !moderation.isSafe && moderation.confidence >= 0.5 && moderation.confidence <= 0.8;
+  await Product.updateOne(
+    { _id: productId },
+    {
+      moderation: {
+        isSafe: moderation.isSafe,
+        confidence: moderation.confidence,
+        status: pending ? "pending_review" : "none",
+        flaggedCategories: moderation.categories,
+      },
+    }
+  );
+  if (pending) {
+    await enqueueModeration({
+      entityType: "Product",
+      entityId: productId,
+      result: moderation,
+    });
+  }
+};
 
 export const createProduct = async (
   sellerId: string,
@@ -14,7 +45,8 @@ export const createProduct = async (
     price: number;
     stock: number;
     images?: string[];
-  }
+  },
+  moderation?: ModerationResult
 ) => {
   const product = await Product.create({
     sellerId,
@@ -25,6 +57,8 @@ export const createProduct = async (
     stock: data.stock,
     images: data.images || [],
   });
+
+  await applyModeration(product.id, moderation);
 
   return product;
 };
