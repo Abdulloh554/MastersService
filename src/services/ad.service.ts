@@ -6,6 +6,7 @@ import User from "../models/User";
 import { AppError } from "../utils/AppError";
 import { paginate } from "../utils/helpers";
 import { createNotification } from "./notification.service";
+import { sendPushToCategory } from "./push-notification.service";
 import {
   enqueueModeration,
   ModerationResult,
@@ -60,6 +61,20 @@ export const createAd = async (
         result: moderation,
       });
     }
+  }
+
+  // Kategoriyaga ko'ra push-bildirishnoma: buyurtma joylanishi bilan tegishli
+  // Master'larga yuboriladi. So'rovni sekinlashtirmaslik uchun orqa fonda.
+  if (ad.category) {
+    setImmediate(() => {
+      sendPushToCategory(ad.category as any, {
+        title: "Yangi buyurtma",
+        body: `${ad.title}`,
+        data: { adId: String(ad._id), categoryId: String(ad.category) },
+      }).catch((err) =>
+        console.error("[ad] Push yuborishda xato:", err?.message || err)
+      );
+    });
   }
 
   return ad;

@@ -1,4 +1,4 @@
-import { Document } from "mongoose";
+import { Document, Types } from "mongoose";
 
 export enum UserRole {
   CLIENT = "client",
@@ -37,6 +37,8 @@ export interface IUser extends Document {
     ru: string;
     en: string;
   };
+  /** Kategoriyalar bo'yicha push-bildirishnomalarga obuna bo'lgan kategoriyalar (asosan Master). */
+  categoryIds: Types.ObjectId[];
   isActive: boolean;
   isVerified: boolean;
   createdAt: Date;

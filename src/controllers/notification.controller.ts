@@ -1,5 +1,51 @@
 import { Request, Response, NextFunction } from "express";
 import * as notificationService from "../services/notification.service";
+import * as pushService from "../services/push-notification.service";
+
+export const registerToken = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const { token, platform, categoryIds } = req.body;
+    const result = await pushService.registerToken({
+      userId: req.user!.userId,
+      token,
+      platform,
+      categoryIds: categoryIds || [],
+    });
+
+    res.status(201).json({
+      success: true,
+      message: "Push token registered successfully",
+      data: result,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const updateCategories = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const { categoryIds } = req.body;
+    const result = await pushService.updateTokenCategories(
+      req.user!.userId,
+      categoryIds
+    );
+    res.status(200).json({
+      success: true,
+      message: "Push categories updated successfully",
+      data: result,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
 
 export const getNotifications = async (
   req: Request,

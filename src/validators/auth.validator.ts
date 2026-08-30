@@ -51,4 +51,9 @@ export const updateRoleSchema = z.object({
   role: z.enum(["client", "master", "seller"], {
     message: "Role must be client, master, or seller",
   }),
+  categoryIds: z
+    .array(z.string().min(1, "Invalid category id"))
+    .max(100, "Too many categories")
+    .optional()
+    .default([]),
 });

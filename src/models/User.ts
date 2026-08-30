@@ -66,6 +66,13 @@ const userSchema = new Schema<IUser>(
       ru: { type: String, default: "" },
       en: { type: String, default: "" },
     },
+    categoryIds: [
+      {
+        type: Schema.Types.ObjectId,
+        ref: "Category",
+        default: [],
+      },
+    ],
     isActive: {
       type: Boolean,
       default: true,

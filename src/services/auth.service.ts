@@ -1,6 +1,7 @@
 import User from "../models/User";
 import RefreshToken from "../models/RefreshToken";
 import PasswordReset from "../models/PasswordReset";
+import mongoose from "mongoose";
 import { UserRole } from "../types/user.types";
 import { AppError } from "../utils/AppError";
 import {
@@ -271,7 +272,11 @@ export const resetPassword = async (
   return { success: true };
 };
 
-export const updateRole = async (userId: string, role: string) => {
+export const updateRole = async (
+  userId: string,
+  role: string,
+  categoryIds: string[] = []
+) => {
   const user = await User.findById(userId);
   if (!user) {
     throw AppError.notFound("User not found");
@@ -279,6 +284,21 @@ export const updateRole = async (userId: string, role: string) => {
 
   const wasMaster = user.role === "master";
   user.role = role as any;
+
+  // Kategoriyalarni faqat Master savatiga yozamiz; Client/Seller uchun tozalaymiz.
+  const validCategories = Array.isArray(categoryIds)
+    ? categoryIds
+        .map((id) => {
+          try {
+            return new mongoose.Types.ObjectId(id);
+          } catch {
+            return null;
+          }
+        })
+        .filter((id): id is mongoose.Types.ObjectId => id !== null)
+    : [];
+  user.categoryIds =
+    role === "master" ? (validCategories as any) : [];
 
   // Grant the signup bonus only on the first switch to master,
   // not every time the endpoint is called.
