@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import * as adService from "../services/ad.service";
+import { mark } from "../middleware/perfProfiler.middleware";
 
 export const createAd = async (
   req: Request,
@@ -25,6 +26,7 @@ export const getAds = async (
   next: NextFunction
 ) => {
   try {
+    mark(req, "middleware tugadi");
     const page = Number(req.query.page) || 1;
     const limit = Number(req.query.limit) || 20;
     const category = req.query.category as string | undefined;
@@ -40,6 +42,7 @@ export const getAds = async (
       maxBudget,
       search,
     });
+    mark(req, "DB so'rov tugadi");
 
     res.status(200).json({
       success: true,

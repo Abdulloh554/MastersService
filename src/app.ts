@@ -8,8 +8,12 @@ import { generalLimiter } from "./middleware/rateLimiter";
 import requestLogger from "./middleware/requestLogger";
 import errorHandler from "./middleware/errorHandler";
 import noSqlSanitizer from "./middleware/sanitize";
+import { perfProfiler } from "./middleware/perfProfiler.middleware";
 
 const app = express();
+
+// Vaqtinchalik perf profiler — eng birinchi middleware (peri udit uchun).
+app.use(perfProfiler);
 
 // Express 5: req.ip (rate limiting, audit) reverse-proxy (Render/NGINX)
 // orqasida ham to'g'ri ishlashi uchun trust proxy yoqiladi. Faqat bitta hop.

@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import * as authService from "../services/auth.service";
+import { mark } from "../middleware/perfProfiler.middleware";
 
 export const register = async (
   req: Request,
@@ -40,6 +41,7 @@ export const login = async (
       req.headers["user-agent"],
       req.ip
     );
+    mark(req, "login (bcrypt+DB) tugadi");
 
     res.status(200).json({
       success: true,
